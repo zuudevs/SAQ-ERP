@@ -1,7 +1,7 @@
 ```mermaid
 graph TD
     %% Lapisan Pengguna
-    User[("👤 Pengguna (Peramban/Seluler)")] -->|HTTPS (Aplikasi React)| Nginx[("🛡️ Nginx Reverse Proxy")]
+    User[("👤 Pengguna (Peramban/Seluler)")] -->|"HTTPS (Aplikasi React)"| Nginx[("🛡️ Nginx Reverse Proxy")]
     
     %% Lapisan Server (Docker Host)
     subgraph "Host Docker (Server Lab)"
