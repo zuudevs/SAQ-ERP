@@ -1,57 +1,52 @@
-# Data Dictionary Updates & Implementation Notes
+# Pembaruan Kamus Data & Catatan Implementasi (Edisi Go)
 
-## 1. Audit Log Strategy (JSON Patch Implementation)
-Gunakan library C++ seperti `nlohmann/json` untuk menghasilkan diff.
-Format kolom `changes` di tabel `IMMUTABLE_LOG` wajib mengikuti standar **RFC 6902**.
+## 1. Strategi Log Audit (JSON Patch)
+Implementasi menggunakan pustaka Go seperti `github.com/evanphx/json-patch` atau pustaka standar untuk proses pembedaan (*diffing*).
 
-### Contoh Kasus: Update Status Tugas
-* **Skenario:** User mengubah status task dari `IN_PROGRESS` ke `COMPLETED` dan progress jadi 100%.
-* **Database Action:** INSERT INTO immutable_log ...
-* **JSONB `changes`:**
-  ```json
-  [
-    { "op": "replace", "path": "/status", "value": "COMPLETED" },
-    { "op": "replace", "path": "/progress_percentage", "value": 100 }
-  ]
-  ```
+### Contoh Implementasi (Struct Go)
+```go
+type AuditLog struct {
+    ID           uuid.UUID       `db:"id"`
+    PrevHash     string          `db:"prev_hash"`
+    CurrHash     string          `db:"curr_hash"` // SHA256
+    ActionType   string          `db:"action_type"`
+    Changes      json.RawMessage `db:"changes"`   // Format RFC 6902
+    Metadata     json.RawMessage `db:"metadata"`
+    Timestamp    time.Time       `db:"timestamp"`
+}
+```
 
-### Contoh Kasus: Komentar pada Tugas
-* **Skenario:** User berkomentar "Kabel LAN sudah diganti".
-* **Database Action:** INSERT INTO immutable_log ...
-* **Kolom `action_type`:** `COMMENT`
-* **Kolom `changes`:** `null` (Karena tidak ada data tabel yang berubah)
-* **Kolom `metadata`:**
-  ```json
-  {
-    "comment_text": "Kabel LAN sudah diganti",
-    "attachment_url": null,
-    "mentioned_users": ["uuid-user-lain"]
-  }
-  ```
+### Skenario: Pembaruan Status
+* **Data Lama:** `{"status": "DRAFT"}`
+* **Data Baru:** `{"status": "SUBMITTED"}`
+* **JSON Patch (RFC 6902) yang dihasilkan:**
+    ```json
+    [ { "op": "replace", "path": "/status", "value": "SUBMITTED" } ]
+    ```
 
-## 2. Git Integration (Backend C++ with libgit2)
-Backend tidak menyimpan file biner di database. Database hanya menyimpan metadata dan pointer commit.
+## 2. Penyimpanan Dokumen (Implementasi MinIO)
+Backend tidak lagi menggunakan Git (`libgit2`). Sistem menggunakan API S3 sepenuhnya.
 
-### Konfigurasi Server
-* **Repo Path:** `/var/erp_data/repo.git` (Bare Repository direkomendasikan).
-* **Git User:** Set global config server sebagai `system@lab-saq.id` atau gunakan Signature user yang login saat commit.
+### Konfigurasi Bucket
+* **Nama Bucket:** `erp-archives`
+* **Versioning:** `Enabled` (Wajib diaktifkan pada konsol MinIO).
+* **Object Lock:** Opsional, untuk kepatuhan *WORM (Write Once Read Many)*.
 
-### Flow Upload (Write)
-1. Backend menerima Stream Multipart.
-2. Tulis file ke working directory sementara.
-3. Panggil `git_index_add_bypath` (libgit2).
-4. Panggil `git_commit_create` (Author = User Login).
-5. Ambil SHA-1 Hash dari hasil commit.
-6. **SQL Insert:** Simpan SHA-1 ke tabel `DOCUMENT_VERSION` kolom `git_commit_hash`.
+### Alur Unggah (Handler Go)
+1.  Urai (*Parse*) `multipart/form-data`.
+2.  Buat jalur objek: `uploads/{tahun}/{bulan}/{uuid}-{namafile}`.
+3.  Alirkan berkas ke MinIO menggunakan SDK `minio-go` (`PutObject`).
+4.  Dapatkan `VersionID` dari respons SDK.
+5.  Simpan metadata ke tabel `DOCUMENT_VERSION`.
 
-### Flow Download (Read)
-1. User request file ID.
-2. DB Lookup -> Ambil `git_commit_hash` & `git_tree_path`.
-3. Panggil `git_commit_lookup` & `git_tree_entry_bypath`.
-4. Stream blob content dari Git Object Database ke HTTP Response.
+### Alur Unduh
+1.  Pengguna meminta ID berkas.
+2.  Backend memeriksa izin akses.
+3.  Backend membuat **Presigned URL** (valid selama 15 menit).
+4.  Arahkan pengguna ke URL tersebut atau *proxy stream* melalui backend.
 
-## 3. Exclusive Arc Constraint (SQL DDL)
-Pastikan saat `CREATE TABLE document_context_adapter`, tambahkan constraint ini untuk mencegah satu dokumen nyasar ke banyak modul sekaligus:
+## 3. Batasan Exclusive Arc (SQL DDL)
+Batasan (*Constraint*) ini dipertahankan pada PostgreSQL untuk menjamin integritas data:
 
 ```sql
 CONSTRAINT chk_one_parent_only CHECK (

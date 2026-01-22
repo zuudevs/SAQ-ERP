@@ -1,91 +1,68 @@
 ```mermaid
 erDiagram
     %% ==========================================
-    %% 1. GUDANG UTAMA (Metadata Only)
+    %% 1. ARSIP UTAMA (Hanya Metadata)
     %% ==========================================
     MASTER_ARCHIVE {
         UUID id PK
-        STRING archive_code "Unique Human-Readable (DOC-2026-001)"
+        STRING archive_code "Unik (DOC-2026-001)"
         STRING title "Judul Dokumen"
-        TEXT description "Deskripsi singkat"
-        
-        %% Kategori & Akses
-        STRING category_tag "LEGAL, FINANCE, ACADEMIC, EVIDENCE"
-        STRING classification "PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED"
-        
-        %% Status
-        BOOLEAN is_digitized "True jika hasil scan fisik"
-        BOOLEAN is_archived "Soft delete flag"
-        
+        TEXT description "Deskripsi"
+        STRING category_tag "Kategori"
+        BOOLEAN is_archived "Status Arsip"
         DATETIME created_at
-        DATETIME updated_at
     }
 
     %% ==========================================
-    %% 2. VERSION CONTROL (GIT INTEGRATION)
+    %% 2. KONTROL VERSI (MINIO BACKED)
     %% ==========================================
-    %% File fisik dikelola oleh libgit2 di backend server.
-    %% Database hanya mencatat pointer ke Commit Git.
+    %% Kolom referensi Git diganti dengan referensi S3/MinIO
     DOCUMENT_VERSION {
         UUID id PK
         UUID master_archive_id FK
-        INT version_number "Urutan versi (v1, v2, v3)"
+        INT version_number "Urutan (1, 2, 3)"
         
-        %% Git References (The Real Storage)
-        STRING git_commit_hash "SHA-1 Commit ID (e.g. 7b3f1...)"
-        STRING git_blob_hash "SHA-1 Blob ID (e.g. a1b2...)"
-        STRING git_tree_path "Path file dalam repo (e.g. /finance/2026/inv.pdf)"
+        %% Referensi MinIO
+        STRING bucket_name "cth: erp-archives"
+        STRING object_path "cth: 2026/01/sk-rektor.pdf"
+        STRING s3_version_id "UUID versi dari MinIO"
+        STRING s3_etag "MD5 Hash dari MinIO"
         
-        %% Metadata File
-        STRING file_name
-        STRING file_mime "application/pdf, image/jpeg"
-        INT file_size_bytes
+        %% Metadata Berkas
+        STRING file_name_original "Nama Asli Berkas"
+        STRING file_mime_type "Tipe MIME"
+        INT file_size_bytes "Ukuran Berkas"
         
-        %% Context Revisi
-        STRING commit_message "Pesan perubahan (e.g. Revisi TTD Kaprodi)"
-        UUID uploader_id FK "Siapa yg upload/commit versi ini"
-        DATETIME committed_at
+        %% Konteks
+        STRING change_note "Alasan unggah versi baru"
+        UUID uploader_id FK
+        DATETIME uploaded_at
     }
 
     %% ==========================================
-    %% 3. THE ADAPTER (EXCLUSIVE ARC PATTERN)
+    %% 3. ADAPTER (EXCLUSIVE ARC)
     %% ==========================================
-    %% Jembatan polimorfik yang aman secara SQL.
-    %% Constraint Logic:
-    %% CHECK ( (event_id IS NOT NULL)::int + (item_id IS NOT NULL)::int + ... = 1 )
     DOCUMENT_CONTEXT_ADAPTER {
         UUID id PK
         UUID master_archive_id FK
         
-        %% Target References (Nullable Foreign Keys)
-        UUID event_id FK "Nullable"
-        UUID daily_report_id FK "Nullable"
-        UUID item_id FK "Nullable"
-        UUID finance_transaction_id FK "Nullable"
-        UUID task_assignment_id FK "Nullable"
+        %% Referensi Target (Boleh Null)
+        UUID event_id FK
+        UUID daily_report_id FK
+        UUID item_id FK
+        UUID finance_transaction_id FK
+        UUID task_assignment_id FK
         
-        %% Metadata Relasi
-        STRING relation_role "MAIN_EVIDENCE, SUPPORTING_DOC, REFERENCE"
-        DATETIME linked_at
+        STRING relation_role "BUKTI_UTAMA, REFERENSI"
     }
-
-    %% ==========================================
-    %% 4. ENTITAS LUAR (Visualisasi Relasi)
-    %% ==========================================
+    
+    %% ENTITAS LAIN
     EVENT { UUID id PK }
-    DAILY_REPORT { UUID id PK }
-    ITEM { UUID id PK }
     FINANCE_TRANSACTION { UUID id PK }
-    TASK_ASSIGNMENT { UUID id PK }
 
     %% RELASI
-    MASTER_ARCHIVE ||--o{ DOCUMENT_VERSION : "tracked in git"
-    MASTER_ARCHIVE ||--o{ DOCUMENT_CONTEXT_ADAPTER : "linked via"
-    
-    %% Exclusive Arc Relations (Satu Adapter hanya ke Satu Target)
-    DOCUMENT_CONTEXT_ADAPTER }o--|| EVENT : "evidence for"
-    DOCUMENT_CONTEXT_ADAPTER }o--|| DAILY_REPORT : "evidence for"
-    DOCUMENT_CONTEXT_ADAPTER }o--|| ITEM : "evidence for"
-    DOCUMENT_CONTEXT_ADAPTER }o--|| FINANCE_TRANSACTION : "evidence for"
-    DOCUMENT_CONTEXT_ADAPTER }o--|| TASK_ASSIGNMENT : "evidence for"
+    MASTER_ARCHIVE ||--o{ DOCUMENT_VERSION : "memiliki versi"
+    MASTER_ARCHIVE ||--o{ DOCUMENT_CONTEXT_ADAPTER : "terhubung via"
+    DOCUMENT_CONTEXT_ADAPTER }o--|| EVENT : "bukti untuk"
+    DOCUMENT_CONTEXT_ADAPTER }o--|| FINANCE_TRANSACTION : "bukti untuk"
 ```

@@ -1,41 +1,35 @@
 ```mermaid
 sequenceDiagram
     autonumber
-    actor U as 👤 Bendahara
-    participant API as 🖥️ Backend API
-    participant WF as ⚙️ Workflow Engine
-    participant DB_FIN as 💰 Finance Module
-    participant DB_INV as 📦 Inventory Module
-    participant MINIO as 🗄️ MinIO & Archive
-    participant LOG as 🛡️ Immutable Log
+    actor U as 👤 Bendahara (Frontend)
+    participant API as 🐹 Go Backend API
+    participant WF as ⚙️ Usecase Alur Kerja
+    participant MINIO as 🗄️ Penyimpanan MinIO
+    participant DB as 🐘 PostgreSQL
+    participant LOG as 🛡️ Layanan Audit
 
-    Note over U, LOG: STEP 1: Pengajuan Transaksi
-    U->>API: Input "Beli Router" + Upload Foto Struk
+    Note over U, LOG: LANGKAH 1: Pengajuan Transaksi & Unggah Bukti
     
-    %% 1. Upload File dulu
-    API->>MINIO: 1. PutObject(struk.jpg)
-    MINIO-->>API: Return file_path & hash (SHA256)
+    %% 1. Unggah Berkas
+    U->>API: Unggah Struk (Multipart Form)
+    API->>WF: Validasi Izin Pengguna
+    API->>MINIO: PutObject("finance/struk.jpg")
+    MINIO-->>API: Mengembalikan VersionID & ETag
     
-    %% 2. Buat Record Arsip (MASTER_ARCHIVE)
-    API->>MINIO: 2. Insert ke MASTER_ARCHIVE & VERSION
+    %% 2. Simpan Metadata Dokumen
+    API->>DB: INSERT INTO document_version (path, version_id, ...)
     
-    %% 3. Cek Workflow
-    API->>WF: 3. CheckPermission(Role='BENDAHARA', Action='SUBMIT')
-    WF-->>API: Approved (NextState: 'COMPLETED')
+    %% 3. Buat Transaksi
+    API->>DB: INSERT INTO finance_transaction (status='DRAFT', ...)
     
-    %% 4. Simpan Transaksi Keuangan
-    API->>DB_FIN: 4. Insert FINANCE_TRANSACTION (Status='COMPLETED')
+    %% 4. Tautkan Dokumen (Adapter)
+    API->>DB: INSERT INTO document_context_adapter (finance_id, doc_id)
     
-    %% 5. Link Dokumen ke Transaksi (ADAPTER)
-    Note right of API: Ini kuncinya! DOCUMENT_CONTEXT_ADAPTER
-    API->>MINIO: 5. Insert DOCUMENT_CONTEXT_ADAPTER<br/>(context_type='FINANCE', id=trans_id)
+    %% 5. Pencatatan Audit (Kritikal)
+    Note right of API: Dilakukan secara Asinkron (Goroutine/Channel)
+    API->>LOG: LogAction(Actor, Action="CREATE_TRANS", Data)
+    LOG->>LOG: Hitung Rantai Hash (Prev + Curr)
+    LOG->>DB: INSERT INTO immutable_log
     
-    %% 6. Auto-Create Item Inventaris (Optional)
-    Note right of API: Karena beli barang, otomatis masuk Inventaris
-    API->>DB_INV: 6. Insert ITEM (Source='PURCHASE', PO_ID=trans_id)
-    
-    %% 7. The Final Boss: AUDIT LOG
-    API->>LOG: 7. LogAction(Actor, Action, DataSnapshot, HashChain)
-    
-    API-->>U: Success! (Data tersimpan & Audit Trail aman)
+    API-->>U: Respons OK (201 Created)
 ```

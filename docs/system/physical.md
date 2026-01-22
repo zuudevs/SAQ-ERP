@@ -1,37 +1,48 @@
 ```mermaid
 graph TD
-    %% User Layer
-    User[("👤 User (Anggota/Dosen)")] -->|HTTPS Request| WebServer[("🌐 ERP Web Server<br/>(C++ Backend)")]
+    %% Lapisan Pengguna
+    User[("👤 Pengguna (Peramban/Seluler)")] -->|HTTPS (Aplikasi React)| Nginx[("🛡️ Nginx Reverse Proxy")]
     
-    %% Server Layer (PC Lab)
-    subgraph "Server Fisik (PC Lab - Windows)"
-        WebServer
+    %% Lapisan Server (Docker Host)
+    subgraph "Host Docker (Server Lab)"
+        Nginx
         
-        %% Logic
-        WorkflowEng[("⚙️ Workflow Engine<br/>(State Machine Logic)")]
-        WebServer <--> WorkflowEng
+        %% Layanan Aplikasi
+        Frontend[("⚛️ Kontainer Frontend<br/>(React SPA)")]
+        Backend[("🐹 Kontainer Backend<br/>(Go API - Echo/Gin)")]
         
-        %% Storage Layer
-        DB[("🗄️ Database PostgreSQL<br/>(Semua Tabel ERD)")]
-        MinIO[("bucket MinIO S3<br/>(Object Storage Lokal)")]
+        Nginx -->|Rute /api| Backend
+        Nginx -->|Rute /| Frontend
         
-        WebServer <-->|Query Data| DB
-        WebServer <-->|Upload/Download| MinIO
+        %% Layanan Penyimpanan
+        DB[("🐘 Kontainer PostgreSQL<br/>(Data & Log Audit)")]
+        MinIO[("🗄️ Kontainer MinIO<br/>(Penyimpanan Objek S3)")]
         
-        %% Automation
-        TaskSched[("⏰ Windows Task Scheduler")]
-        TaskSched -.->|Trigger| AutoShutdown[("🔌 Auto Shutdown (21:00)")]
-        TaskSched -.->|Trigger| RcloneScript[("🔄 Rclone Sync Script")]
+        %% Komunikasi Antar-Kontainer
+        Backend <-->|SQL/TCP| DB
+        Backend <-->|S3 API/HTTP| MinIO
+        
+        %% Otomatisasi
+        BackupService[("📦 Sidecar Pencadangan<br/>(Go Cron/Bash)")]
+        BackupService -.->|Dump| DB
+        BackupService -.->|Sync| MinIO
     end
     
-    %% External / Cloud Layer
-    subgraph "Cloud Backup"
-        GDrive[("☁️ Google Drive Kampus")]
+    %% Lapisan Eksternal / Cloud
+    subgraph "Pencadangan Cloud (Opsional)"
+        CloudS3[("☁️ AWS S3 / GDrive")]
     end
     
-    RcloneScript -->|Encrypted Sync| GDrive
+    BackupService -->|Cermin Terenkripsi| CloudS3
     
-    %% Style
-    classDef server fill:#f9f,stroke:#333,stroke-width:2px;
-    class User server
+    %% Gaya Visual
+    classDef go fill:#00ADD8,stroke:#333,color:white;
+    classDef react fill:#61DAFB,stroke:#333,color:black;
+    classDef db fill:#336791,stroke:#333,color:white;
+    classDef minio fill:#c72c48,stroke:#333,color:white;
+    
+    class Backend go
+    class Frontend react
+    class DB db
+    class MinIO minio
 ```
