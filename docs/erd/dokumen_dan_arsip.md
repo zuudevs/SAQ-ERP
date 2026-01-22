@@ -1,19 +1,19 @@
 ```mermaid
 erDiagram
     %% ==========================================
-    %% 1. GUDANG UTAMA (The Parent)
+    %% 1. GUDANG UTAMA (Metadata Only)
     %% ==========================================
     MASTER_ARCHIVE {
         UUID id PK
         STRING archive_code "Unique Human-Readable (DOC-2026-001)"
-        STRING title "Judul Dokumen (e.g., LPJ Seminar, Struk Beli Kabel)"
-        TEXT description "Deskripsi singkat isi dokumen"
+        STRING title "Judul Dokumen"
+        TEXT description "Deskripsi singkat"
         
-        %% Kategori Global (Tag-based sesuai Blueprint)
-        STRING category_tag "LEGAL, FINANCE, ACADEMIC, TECHNICAL, EVIDENCE"
-        
-        %% Akses & Keamanan
+        %% Kategori & Akses
+        STRING category_tag "LEGAL, FINANCE, ACADEMIC, EVIDENCE"
         STRING classification "PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED"
+        
+        %% Status
         BOOLEAN is_digitized "True jika hasil scan fisik"
         BOOLEAN is_archived "Soft delete flag"
         
@@ -22,38 +22,47 @@ erDiagram
     }
 
     %% ==========================================
-    %% 2. VERSI FILE (Versioning System)
+    %% 2. VERSION CONTROL (GIT INTEGRATION)
     %% ==========================================
-    ARCHIVE_VERSION {
+    %% File fisik dikelola oleh libgit2 di backend server.
+    %% Database hanya mencatat pointer ke Commit Git.
+    DOCUMENT_VERSION {
         UUID id PK
         UUID master_archive_id FK
-        INT version_number "v1, v2, v3"
+        INT version_number "Urutan versi (v1, v2, v3)"
         
-        %% Metadata File Fisik
-        STRING file_url "Path ke Object Storage (S3/MinIO)"
-        STRING file_hash "SHA-256 (Tamper Evident)"
+        %% Git References (The Real Storage)
+        STRING git_commit_hash "SHA-1 Commit ID (e.g. 7b3f1...)"
+        STRING git_blob_hash "SHA-1 Blob ID (e.g. a1b2...)"
+        STRING git_tree_path "Path file dalam repo (e.g. /finance/2026/inv.pdf)"
+        
+        %% Metadata File
+        STRING file_name
         STRING file_mime "application/pdf, image/jpeg"
         INT file_size_bytes
         
         %% Context Revisi
-        STRING change_note "Keterangan revisi (e.g., TTD Kaprodi completed)"
-        UUID uploader_id FK "Siapa yg upload versi ini"
-        DATETIME uploaded_at
+        STRING commit_message "Pesan perubahan (e.g. Revisi TTD Kaprodi)"
+        UUID uploader_id FK "Siapa yg upload/commit versi ini"
+        DATETIME committed_at
     }
 
     %% ==========================================
-    %% 3. THE ADAPTER (Jembatan ke Semua Modul)
+    %% 3. THE ADAPTER (EXCLUSIVE ARC PATTERN)
     %% ==========================================
-    %% Inilah "Parent" logic-nya. Satu dokumen bisa nyambung ke banyak modul.
+    %% Jembatan polimorfik yang aman secara SQL.
+    %% Constraint Logic:
+    %% CHECK ( (event_id IS NOT NULL)::int + (item_id IS NOT NULL)::int + ... = 1 )
     DOCUMENT_CONTEXT_ADAPTER {
         UUID id PK
         UUID master_archive_id FK
         
-        %% CONTEXT TYPE: Menentukan tabel mana yg dituju
-        STRING context_type "EVENT, NGAWAS, INVENTORY, FINANCE_TRANSACTION"
-        
-        %% CONTEXT ID: UUID dari record di tabel tujuan
-        UUID context_id "Generic ID (Polymorphic Association)"
+        %% Target References (Nullable Foreign Keys)
+        UUID event_id FK "Nullable"
+        UUID daily_report_id FK "Nullable"
+        UUID item_id FK "Nullable"
+        UUID finance_transaction_id FK "Nullable"
+        UUID task_assignment_id FK "Nullable"
         
         %% Metadata Relasi
         STRING relation_role "MAIN_EVIDENCE, SUPPORTING_DOC, REFERENCE"
@@ -61,52 +70,22 @@ erDiagram
     }
 
     %% ==========================================
-    %% 4. MODUL-MODUL LAIN (Consumer)
+    %% 4. ENTITAS LUAR (Visualisasi Relasi)
     %% ==========================================
-    %% Ini representasi modul yang sudah kita buat sebelumnya
-    
-    EVENT {
-        UUID id PK
-        STRING name "Seminar Cyber Security"
-    }
+    EVENT { UUID id PK }
+    DAILY_REPORT { UUID id PK }
+    ITEM { UUID id PK }
+    FINANCE_TRANSACTION { UUID id PK }
+    TASK_ASSIGNMENT { UUID id PK }
 
-    DAILY_REPORT {
-        UUID id PK
-        DATE report_date "Laporan Harian Ngawas"
-    }
-    
-    ITEM {
-        UUID id PK
-        STRING name "Router Mikrotik"
-    }
-
-    %% ==========================================
-    %% 5. FINANCE ADAPTER (Placeholder/Persiapan)
-    %% ==========================================
-    %% Ini tabel bayangan. Nanti kalau bendahara sudah confirm,
-    %% kamu tinggal bikin tabel aslinya dan sambungkan ID-nya ke sini.
-    FINANCE_TRANSACTION_STUB {
-        UUID id PK
-        STRING future_ref_number "No. Kwitansi / Invoice"
-        STRING status "PENDING_CONFIRMATION"
-    }
-
-    %% ==========================================
     %% RELASI
-    %% ==========================================
-    
-    %% Gudang punya banyak versi
-    MASTER_ARCHIVE ||--o{ ARCHIVE_VERSION : "has history"
-    
-    %% Gudang bisa dipakai di banyak konteks
+    MASTER_ARCHIVE ||--o{ DOCUMENT_VERSION : "tracked in git"
     MASTER_ARCHIVE ||--o{ DOCUMENT_CONTEXT_ADAPTER : "linked via"
     
-    %% Polimorfisme (Visualisasi Logika Adapter)
-    DOCUMENT_CONTEXT_ADAPTER }o..|| EVENT : "links to (if type=EVENT)"
-    DOCUMENT_CONTEXT_ADAPTER }o..|| DAILY_REPORT : "links to (if type=NGAWAS)"
-    DOCUMENT_CONTEXT_ADAPTER }o..|| ITEM : "links to (if type=INVENTORY)"
-    DOCUMENT_CONTEXT_ADAPTER }o..|| FINANCE_TRANSACTION_STUB : "links to (if type=FINANCE)"
-
-    %% Audit Log
-    IMMUTABLE_LOG }o--|| MASTER_ARCHIVE : "audits lifecycle"
+    %% Exclusive Arc Relations (Satu Adapter hanya ke Satu Target)
+    DOCUMENT_CONTEXT_ADAPTER }o--|| EVENT : "evidence for"
+    DOCUMENT_CONTEXT_ADAPTER }o--|| DAILY_REPORT : "evidence for"
+    DOCUMENT_CONTEXT_ADAPTER }o--|| ITEM : "evidence for"
+    DOCUMENT_CONTEXT_ADAPTER }o--|| FINANCE_TRANSACTION : "evidence for"
+    DOCUMENT_CONTEXT_ADAPTER }o--|| TASK_ASSIGNMENT : "evidence for"
 ```
