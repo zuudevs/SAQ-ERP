@@ -88,7 +88,7 @@ stateDiagram-v2
     APPROVED --> REJECTED : reject
 
     REJECTED --> DRAFT : revise
-    FINAL --> [*]
+    FINAL --> [*]****
 ```
 
 Dipakai untuk:
