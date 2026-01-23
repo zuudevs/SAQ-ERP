@@ -6,6 +6,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
+	"golang.org/x/crypto/bcrypt"
 	"github.com/zuudevs/erp-saq-lab/internal/config"
 	"github.com/zuudevs/erp-saq-lab/internal/domain"
 	"github.com/zuudevs/erp-saq-lab/internal/middleware"
@@ -36,6 +37,7 @@ type LoginResponse struct {
 	RefreshToken string `json:"refresh_token"`
 	UserID       string `json:"user_id"`
 	Role         string `json:"role"`
+	Name         string `json:"name"`
 }
 
 func (h *AuthHandler) Login(c echo.Context) error {
@@ -54,9 +56,9 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		})
 	}
 
-	// For now, simple password check (TODO: implement proper bcrypt)
-	// In production, use bcrypt.CompareHashAndPassword
-	if member.PasswordHash != req.Password {
+	// Verify password using bcrypt
+	err = bcrypt.CompareHashAndPassword([]byte(member.PasswordHash), []byte(req.Password))
+	if err != nil {
 		return c.JSON(http.StatusUnauthorized, map[string]string{
 			"error": "Invalid credentials",
 		})
@@ -65,7 +67,7 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	// Generate JWT token
 	claims := &middleware.JWTClaims{
 		UserID: member.ID.String(),
-		Role:   member.CurrentRole,
+		Role:   member.MemberRole,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -103,5 +105,6 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		RefreshToken: refreshTokenString,
 		UserID:       claims.UserID,
 		Role:         claims.Role,
+		Name:         member.Name,
 	})
 }

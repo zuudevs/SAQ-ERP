@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 	"github.com/zuudevs/erp-saq-lab/internal/domain"
 	"github.com/zuudevs/erp-saq-lab/internal/repository"
 )
@@ -28,8 +29,17 @@ func (u *memberUsecase) Register(member *domain.Member) error {
 	if member.Status == "" {
 		member.Status = "RECRUITMENT"
 	}
-	if member.CurrentRole == "" {
-		member.CurrentRole = "ANGGOTA"
+	if member.MemberRole == "" {
+		member.MemberRole = "ANGGOTA"
+	}
+
+	// Hash password (default password = NIM)
+	if member.PasswordHash == "" {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(member.NIM), bcrypt.DefaultCost)
+		if err != nil {
+			return err
+		}
+		member.PasswordHash = string(hashedPassword)
 	}
 
 	// Create member
@@ -40,18 +50,16 @@ func (u *memberUsecase) Register(member *domain.Member) error {
 	// Log audit
 	changes, _ := json.Marshal(member)
 	auditLog := &repository.AuditLog{
-		ActorID:      member.ID, // For registration, actor is the member itself
+		ActorID:      member.ID,
 		RoleSnapshot: "SYSTEM",
 		ActionType:   "CREATE",
 		TargetTable:  "member",
 		TargetID:     member.ID.String(),
 		Changes:      changes,
 	}
-	if err := u.auditRepo.Log(auditLog); err != nil {
-		// Log error but don't fail the operation
-		// In production, you might want to use proper logging
-		return err
-	}
+	
+	// Don't fail registration if audit logging fails
+	_ = u.auditRepo.Log(auditLog)
 
 	return nil
 }
@@ -99,13 +107,13 @@ func (u *memberUsecase) UpdateProfile(member *domain.Member) error {
 		changesJSON, _ := json.Marshal(changes)
 		auditLog := &repository.AuditLog{
 			ActorID:      member.ID,
-			RoleSnapshot: member.CurrentRole,
+			RoleSnapshot: member.MemberRole,
 			ActionType:   "UPDATE",
 			TargetTable:  "member",
 			TargetID:     member.ID.String(),
 			Changes:      changesJSON,
 		}
-		u.auditRepo.Log(auditLog)
+		_ = u.auditRepo.Log(auditLog)
 	}
 
 	return nil

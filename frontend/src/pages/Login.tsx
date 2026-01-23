@@ -14,6 +14,7 @@ interface LoginResponse {
   refresh_token: string;
   user_id: string;
   role: string;
+  name: string; // ADDED
 }
 
 export default function Login() {
@@ -27,13 +28,14 @@ export default function Login() {
     mutationFn: (data: LoginRequest) =>
       api.post<LoginResponse>('/auth/login', data),
     onSuccess: (response) => {
-      const { token, refresh_token, user_id, role } = response.data;
+      const { token, refresh_token, user_id, role, name } = response.data;
       
       // Store auth data
       localStorage.setItem('token', token);
       localStorage.setItem('refresh_token', refresh_token);
       localStorage.setItem('user_id', user_id);
       localStorage.setItem('role', role);
+      localStorage.setItem('user_name', name); // ADDED
       
       // Redirect to dashboard
       navigate('/members');
@@ -83,7 +85,7 @@ export default function Login() {
                   value={formData.nim}
                   onChange={handleChange}
                   className="appearance-none rounded-lg relative block w-full px-3 py-3 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                  placeholder="NIM"
+                  placeholder="NIM (default: NIM sebagai password)"
                 />
               </div>
             </div>

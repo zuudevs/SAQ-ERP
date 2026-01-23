@@ -38,7 +38,7 @@ func (r *memberRepository) Create(member *domain.Member) error {
 		member.MajorCode,
 		member.SerialNumber,
 		member.Status,
-		member.CurrentRole,
+		member.MemberRole,
 		"temporary_hash", // TODO: implement password hashing
 	).Scan(&member.ID, &member.JoinedAt, &member.UpdatedAt)
 }
@@ -85,7 +85,7 @@ func (r *memberRepository) Update(member *domain.Member) error {
 		member.Name,
 		member.EmailUni,
 		member.Status,
-		member.CurrentRole,
+		member.MemberRole,
 		member.ID,
 	)
 	return err

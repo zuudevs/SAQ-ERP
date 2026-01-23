@@ -14,7 +14,8 @@ type Member struct {
     MajorCode       string     `json:"major_code" db:"major_code"`
     SerialNumber    int        `json:"serial_number" db:"serial_number"`
     Status          string     `json:"status" db:"status"`
-    CurrentRole     string     `json:"current_role" db:"current_role"`
+    MemberRole      string     `json:"member_role" db:"member_role"`  // FIXED: Changed from current_role
+    PasswordHash    string     `json:"-" db:"password_hash"`          // ADDED: For authentication
     JoinedAt        time.Time  `json:"joined_at" db:"joined_at"`
     UpdatedAt       time.Time  `json:"updated_at" db:"updated_at"`
 }
