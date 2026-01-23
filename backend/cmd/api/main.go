@@ -31,7 +31,7 @@ func main() {
 	defer db.Close()
 
 	// Initialize MinIO
-	minioClient, err := database.NewMinIO(cfg.MinIO)
+	_, err = database.NewMinIO(cfg.MinIO)
 	if err != nil {
 		log.Fatalf("Failed to connect to MinIO: %v", err)
 	}
