@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import { memberAPI, RegisterMemberRequest } from '../lib/api';
+import { memberAPI, type RegisterMemberRequest } from '../lib/api';
 
 export default function MemberRegister() {
   const navigate = useNavigate();

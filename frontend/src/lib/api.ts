@@ -36,8 +36,8 @@ api.interceptors.response.use(
   }
 );
 
-// Member API
-export interface Member {
+// Member API Types
+export type Member = {
   id: string;
   nim: string;
   name: string;
@@ -46,19 +46,19 @@ export interface Member {
   major_code: string;
   serial_number: number;
   status: string;
-  current_role: string;
+  member_role: string; // Changed from current_role
   joined_at: string;
   updated_at: string;
-}
+};
 
-export interface RegisterMemberRequest {
+export type RegisterMemberRequest = {
   nim: string;
   name: string;
   email_uni: string;
   generation_year: number;
   major_code: string;
   serial_number: number;
-}
+};
 
 export const memberAPI = {
   register: (data: RegisterMemberRequest) =>

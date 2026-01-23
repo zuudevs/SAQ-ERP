@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS member (
     major_code VARCHAR(10) NOT NULL REFERENCES major(code),
     serial_number INT NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'RECRUITMENT',
-    current_role VARCHAR(50) DEFAULT 'ANGGOTA',
+    member_role VARCHAR(50) DEFAULT 'ANGGOTA',  -- Changed from current_role
     password_hash VARCHAR(255) NOT NULL,
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -51,11 +51,11 @@ CREATE TABLE IF NOT EXISTS member (
 
 CREATE TABLE IF NOT EXISTS member_sensitive_data (
     member_id UUID PRIMARY KEY REFERENCES member(id) ON DELETE CASCADE,
-    nik_ktp VARCHAR(255),  -- Encrypted
-    phone_number VARCHAR(255),  -- Encrypted
-    personal_email VARCHAR(255),  -- Encrypted
-    address TEXT,  -- Encrypted
-    bank_account VARCHAR(255),  -- Encrypted
+    nik_ktp VARCHAR(255),
+    phone_number VARCHAR(255),
+    personal_email VARCHAR(255),
+    address TEXT,
+    bank_account VARCHAR(255),
     date_of_birth DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -204,8 +204,8 @@ CREATE TABLE IF NOT EXISTS item (
 CREATE TABLE IF NOT EXISTS actor (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL,
-    identity_number VARCHAR(255),  -- Encrypted
-    contact_info VARCHAR(255),  -- Encrypted
+    identity_number VARCHAR(255),
+    contact_info VARCHAR(255),
     type VARCHAR(20) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT chk_actor_type CHECK (type IN ('STUDENT', 'LECTURER', 'PUBLIC'))
@@ -270,7 +270,6 @@ CREATE TABLE IF NOT EXISTS purchase_order (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Link Purchase Order to Item
 ALTER TABLE item ADD CONSTRAINT fk_purchase_order 
     FOREIGN KEY (purchase_order_id) REFERENCES purchase_order(id);
 
@@ -402,10 +401,10 @@ CREATE TABLE IF NOT EXISTS task_assignment (
 CREATE TABLE IF NOT EXISTS task_assignee (
     task_id UUID REFERENCES task_assignment(id) ON DELETE CASCADE,
     member_id UUID REFERENCES member(id) ON DELETE CASCADE,
-    role VARCHAR(20) DEFAULT 'MEMBER',
+    assignee_role VARCHAR(20) DEFAULT 'MEMBER',  -- Changed from role
     assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (task_id, member_id),
-    CONSTRAINT chk_assignee_role CHECK (role IN ('LEADER', 'MEMBER'))
+    CONSTRAINT chk_assignee_role CHECK (assignee_role IN ('LEADER', 'MEMBER'))
 );
 
 CREATE TABLE IF NOT EXISTS recurring_task_template (
@@ -493,37 +492,30 @@ ALTER TABLE document_context_adapter
 -- INDEXES (Performance Optimization)
 -- =====================================================
 
--- Member Indexes
 CREATE INDEX idx_member_nim ON member(nim);
 CREATE INDEX idx_member_status ON member(status);
 CREATE INDEX idx_member_generation ON member(generation_year);
 CREATE INDEX idx_member_email ON member(email_uni);
 
--- Audit Log Indexes
 CREATE INDEX idx_audit_target ON immutable_log(target_table, target_id);
 CREATE INDEX idx_audit_timestamp ON immutable_log(timestamp DESC);
 CREATE INDEX idx_audit_actor ON immutable_log(actor_id);
 CREATE INDEX idx_audit_hash ON immutable_log(curr_hash);
 
--- Document Indexes
 CREATE INDEX idx_doc_archive ON document_version(master_archive_id);
 CREATE INDEX idx_doc_uploader ON document_version(uploader_id);
 
--- Inventory Indexes
 CREATE INDEX idx_item_status ON item(status);
 CREATE INDEX idx_item_location ON item(location_id);
 CREATE INDEX idx_loan_status ON loan_transaction(approval_status);
 
--- Task Indexes
 CREATE INDEX idx_task_status ON task_assignment(status);
 CREATE INDEX idx_task_due ON task_assignment(due_date);
 CREATE INDEX idx_task_creator ON task_assignment(creator_id);
 
--- Finance Indexes
 CREATE INDEX idx_finance_date ON finance_transaction(transaction_date);
 CREATE INDEX idx_finance_status ON finance_transaction(status);
 
--- Event Indexes
 CREATE INDEX idx_event_status ON event(status);
 CREATE INDEX idx_event_date ON event(start_time);
 
@@ -531,20 +523,17 @@ CREATE INDEX idx_event_date ON event(start_time);
 -- INITIAL DATA (Seed Data)
 -- =====================================================
 
--- Insert default majors
 INSERT INTO major (code, name, faculty) VALUES
     ('11', 'Teknik Informatika', 'Fakultas Teknik'),
     ('12', 'Sistem Informasi', 'Fakultas Teknik')
 ON CONFLICT (code) DO NOTHING;
 
--- Insert default batch
 INSERT INTO batch_generation (year, nickname, entry_date) VALUES
     (2024, 'Genesis', '2024-09-01'),
     (2025, 'Vanguard', '2025-09-01'),
     (2026, 'Pioneer', '2026-09-01')
 ON CONFLICT (year) DO NOTHING;
 
--- Insert default locations
 INSERT INTO location (name, code) VALUES
     ('Lab 1', 'LAB-1'),
     ('Lab 2', 'LAB-2'),
@@ -552,14 +541,12 @@ INSERT INTO location (name, code) VALUES
     ('Gudang', 'STORAGE')
 ON CONFLICT (code) DO NOTHING;
 
--- Insert default owner entities
 INSERT INTO owner_entity (name, type) VALUES
     ('Lab SAQ', 'INTERNAL'),
     ('Fakultas Teknik', 'INTERNAL'),
     ('External Donor', 'EXTERNAL')
 ON CONFLICT DO NOTHING;
 
--- Insert default task categories
 INSERT INTO task_category (name, color_code) VALUES
     ('Maintenance', '#FF5733'),
     ('Project', '#3498DB'),
@@ -567,7 +554,6 @@ INSERT INTO task_category (name, color_code) VALUES
     ('Administrasi', '#F39C12')
 ON CONFLICT DO NOTHING;
 
--- Insert default finance accounts
 INSERT INTO finance_account (name, type, current_balance) VALUES
     ('Kas Besar', 'ASSET', 0),
     ('Rekening BNI', 'ASSET', 0),
@@ -576,13 +562,11 @@ INSERT INTO finance_account (name, type, current_balance) VALUES
     ('Biaya Operasional', 'EXPENSE', 0)
 ON CONFLICT DO NOTHING;
 
--- Insert default shifts
 INSERT INTO shift_master (name, start_time, end_time) VALUES
     ('Shift Pagi', '08:00:00', '12:00:00'),
     ('Shift Siang', '13:00:00', '17:00:00')
 ON CONFLICT DO NOTHING;
 
--- Insert default event tags
 INSERT INTO event_tag (name, color_code) VALUES
     ('Workshop', '#3498DB'),
     ('Seminar', '#E74C3C'),
