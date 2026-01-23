@@ -1,59 +1,113 @@
 version: '3.8'
 
 services:
+  # =====================================================
+  # PostgreSQL 16 - Main Database
+  # =====================================================
   postgres:
     image: postgres:16-alpine
     container_name: erp_postgres
     environment:
-      POSTGRES_DB: erp_lab_saq
-      POSTGRES_USER: erp_admin
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-change_this_password}
+      POSTGRES_DB: ${DB_NAME:-erp_lab_saq}
+      POSTGRES_USER: ${DB_USER:-erp_admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-erp_secure_password_2026}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backend/migrations:/docker-entrypoint-initdb.d  # TAMBAH INI
+      - ./backend/migrations:/docker-entrypoint-initdb.d:ro
+    networks:
+      - erp_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U erp_admin"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-erp_admin} -d ${DB_NAME:-erp_lab_saq}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
+  # =====================================================
+  # MinIO - S3-Compatible Object Storage
+  # =====================================================
   minio:
     image: minio/minio:latest
     container_name: erp_minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-erp_minio_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-MinIO_Secure_Pass_2026}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9000:9000"  # API
+      - "9001:9001"  # Console
     volumes:
       - minio_data:/data
+    networks:
+      - erp_network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
       timeout: 20s
       retries: 3
+    restart: unless-stopped
 
+  # =====================================================
+  # MinIO Client - Create Buckets
+  # =====================================================
+  minio_init:
+    image: minio/mc:latest
+    container_name: erp_minio_init
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - erp_network
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER:-erp_minio_admin} ${MINIO_ROOT_PASSWORD:-MinIO_Secure_Pass_2026};
+      mc mb --ignore-existing myminio/erp-archives;
+      mc version enable myminio/erp-archives;
+      mc anonymous set download myminio/erp-archives;
+      exit 0;
+      "
+
+  # =====================================================
+  # Go Backend API
+  # =====================================================
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: erp_backend
     environment:
+      # Database
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: erp_lab_saq
-      DB_USER: erp_admin
+      DB_NAME: ${DB_NAME:-erp_lab_saq}
+      DB_USER: ${DB_USER:-erp_admin}
       DB_PASSWORD: ${DB_PASSWORD:-erp_secure_password_2026}
+      
+      # MinIO
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-erp_minio_admin}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-MinIO_Secure_Pass_2026}
-      JWT_SECRET: ${JWT_SECRET:-your_jwt_secret_key_minimum_32_characters_long}
+      MINIO_USE_SSL: "false"
+      MINIO_BUCKET_NAME: erp-archives
+      
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-your_jwt_secret_key_minimum_32_characters_long_2026}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-24h}
+      
+      # Server
       PORT: 8080
+      GO_ENV: ${GO_ENV:-development}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173}
+      
+      # Encryption
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-your_encryption_key_minimum_32_chars_long}
+      
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
     ports:
       - "8080:8080"
     depends_on:
@@ -61,15 +115,22 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-    restart: unless-stopped  # TAMBAH INI
+    networks:
+      - erp_network
+    restart: unless-stopped
+    volumes:
+      - ./backend/logs:/root/logs
 
+  # =====================================================
+  # React Frontend (Development)
+  # =====================================================
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
     container_name: erp_frontend
     environment:
-      VITE_API_URL: http://localhost:8080/api/v1
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8080/api/v1}
     ports:
       - "5173:5173"
     volumes:
@@ -77,8 +138,22 @@ services:
       - /app/node_modules
     depends_on:
       - backend
+    networks:
+      - erp_network
     restart: unless-stopped
 
+# =====================================================
+# Networks
+# =====================================================
+networks:
+  erp_network:
+    driver: bridge
+
+# =====================================================
+# Persistent Volumes
+# =====================================================
 volumes:
   postgres_data:
+    driver: local
   minio_data:
+    driver: local
