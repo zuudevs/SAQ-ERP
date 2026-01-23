@@ -1,0 +1,316 @@
+# ===============================================
+# .gitignore untuk ERP Lab SAQ
+# Go Backend + React Frontend + Docker
+# ===============================================
+
+# ===== ENVIRONMENT & SECRETS =====
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+!.env.example
+
+# Credentials & Keys
+*.pem
+*.key
+*.cert
+*.crt
+credentials.json
+secrets/
+config/secrets/
+
+# ===== GO BACKEND =====
+# Binaries
+backend/main
+backend/*.exe
+backend/*.exe~
+backend/*.dll
+backend/*.so
+backend/*.dylib
+
+# Test binary
+*.test
+
+# Output of the go coverage tool
+*.out
+coverage.txt
+coverage.html
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Vendor directory
+backend/vendor/
+
+# Build artifacts
+backend/bin/
+backend/dist/
+backend/build/
+
+# Go mod cache
+backend/go.sum.lock
+
+# Air live reload
+backend/tmp/
+.air.toml
+
+# ===== REACT FRONTEND =====
+# Dependencies
+frontend/node_modules/
+node_modules/
+
+# Production build
+frontend/dist/
+frontend/dist-ssr/
+frontend/build/
+*.local
+
+# Testing
+frontend/coverage/
+
+# Misc
+frontend/.DS_Store
+frontend/*.log
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+frontend/lerna-debug.log*
+
+# Editor directories and files
+frontend/.vscode/*
+!frontend/.vscode/extensions.json
+frontend/.idea
+frontend/*.suo
+frontend/*.ntvs*
+frontend/*.njsproj
+frontend/*.sln
+frontend/*.sw?
+
+# Tailwind
+frontend/.tailwindcss/
+
+# ===== DOCKER =====
+# Docker volumes
+postgres_data/
+minio_data/
+docker-volumes/
+
+# Docker override files
+docker-compose.override.yml
+docker-compose.local.yml
+
+# ===== DATABASE =====
+# SQL dumps
+*.sql.gz
+*.sql.zip
+backups/
+dumps/
+
+# PostgreSQL
+.pgpass
+.psqlrc
+
+# ===== MINIO / S3 =====
+# MinIO data
+.minio/
+.minio.sys/
+
+# ===== LOGS =====
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Application logs
+backend/logs/
+frontend/logs/
+
+# ===== OS SPECIFIC =====
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# ===== IDE & EDITORS =====
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+*.code-workspace
+
+# JetBrains IDEs (IntelliJ, GoLand, WebStorm)
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+Session.vim
+Sessionx.vim
+.netrwhist
+*~
+tags
+[._]*.un~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ===== BUILD & TEMP =====
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+*.swo
+*~.nib
+
+# Build artifacts
+dist/
+build/
+*.zip
+*.tar.gz
+*.tgz
+*.rar
+
+# ===== TESTING =====
+# Coverage reports
+coverage/
+*.cover
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.nyc_output/
+
+# ===== DOCUMENTATION =====
+# Generated docs
+docs/_build/
+docs/.doctrees/
+site/
+
+# ===== PACKAGE MANAGERS =====
+# npm
+package-lock.json.bak
+npm-shrinkwrap.json
+
+# Yarn
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# pnpm
+pnpm-lock.yaml.bak
+
+# ===== MISC =====
+# Certificates
+*.crt
+*.pem
+*.p12
+*.pfx
+
+# Archives
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# Lock files (keep in version control but ignore backups)
+*.lock.bak
+
+# Debug files
+debug/
+debug.log
+
+# Cache directories
+.cache/
+.parcel-cache/
+
+# Sentry
+.sentryclirc
+
+# System files
+.Spotlight-V100
+.Trashes
+
+# ===== PROJECT SPECIFIC =====
+# Upload directories (if any)
+uploads/
+attachments/
+media/
+
+# Generated files
+generated/
+
+# Local development
+local/
+dev/
+
+# ===== KEEP THESE FILES =====
+# Configuration examples
+!.env.example
+!config.example.json
+!docker-compose.example.yml
+
+# Documentation
+!README.md
+!CHANGELOG.md
+!LICENSE
+!CONTRIBUTING.md
+
+# CI/CD
+!.github/
+!.gitlab-ci.yml
+
+# Docker
+!Dockerfile
+!Dockerfile.*
+!docker-compose.yml
+!.dockerignore

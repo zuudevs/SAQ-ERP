@@ -43,8 +43,8 @@ func New() *Config {
 		},
 		MinIO: MinIOConfig{
 			Endpoint:  getEnv("MINIO_ENDPOINT", "localhost:9000"),
-			AccessKey: getEnv("MINIO_ACCESS_KEY", "minioadmin"),
-			SecretKey: getEnv("MINIO_SECRET_KEY", "minioadmin123"),
+			AccessKey: getEnv("MINIO_ACCESS_KEY", "erp_minio_admin"),
+			SecretKey: getEnv("MINIO_SECRET_KEY", "MinIO_Secure_Pass_2026"),
 			UseSSL:    false,
 		},
 		JWT: JWTConfig{

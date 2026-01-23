@@ -13,6 +13,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d  # TAMBAH INI
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U erp_admin"]
       interval: 10s
@@ -27,8 +28,8 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
     ports:
-      - "9000:9000"  # API
-      - "9001:9001"  # Console
+      - "9000:9000"
+      - "9001:9001"
     volumes:
       - minio_data:/data
     healthcheck:
@@ -47,11 +48,11 @@ services:
       DB_PORT: 5432
       DB_NAME: erp_lab_saq
       DB_USER: erp_admin
-      DB_PASSWORD: ${DB_PASSWORD:-change_this_password}
+      DB_PASSWORD: ${DB_PASSWORD:-erp_secure_password_2026}
       MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
-      JWT_SECRET: ${JWT_SECRET:-your_super_secret_key_change_this}
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-erp_minio_admin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-MinIO_Secure_Pass_2026}
+      JWT_SECRET: ${JWT_SECRET:-your_jwt_secret_key_minimum_32_characters_long}
       PORT: 8080
     ports:
       - "8080:8080"
@@ -60,9 +61,7 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
-    command: go run cmd/api/main.go
+    restart: unless-stopped  # TAMBAH INI
 
   frontend:
     build:
@@ -70,13 +69,15 @@ services:
       dockerfile: Dockerfile.dev
     container_name: erp_frontend
     environment:
-      VITE_API_URL: http://localhost:8080/api
+      VITE_API_URL: http://localhost:8080/api/v1
     ports:
       - "5173:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    command: npm run dev
+    depends_on:
+      - backend
+    restart: unless-stopped
 
 volumes:
   postgres_data:
