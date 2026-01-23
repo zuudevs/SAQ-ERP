@@ -52,6 +52,8 @@ func (h *MemberHandler) Register(c echo.Context) error {
 		GenerationYear: req.GenerationYear,
 		MajorCode:      req.MajorCode,
 		SerialNumber:   req.SerialNumber,
+		Status:         "RECRUITMENT",
+		CurrentRole:    "ANGGOTA",
 	}
 
 	if err := h.memberUC.Register(member); err != nil {

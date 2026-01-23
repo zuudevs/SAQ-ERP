@@ -10,7 +10,15 @@ type memberRepository struct {
 	db *sqlx.DB
 }
 
-func NewMemberRepository(db *sqlx.DB) domain.MemberRepository {
+type MemberRepository interface {
+	Create(member *domain.Member) error
+	FindByID(id uuid.UUID) (*domain.Member, error)
+	FindByNIM(nim string) (*domain.Member, error)
+	Update(member *domain.Member) error
+	List(limit, offset int) ([]*domain.Member, error)
+}
+
+func NewMemberRepository(db *sqlx.DB) MemberRepository {
 	return &memberRepository{db: db}
 }
 

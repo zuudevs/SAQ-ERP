@@ -7,16 +7,20 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 	"github.com/zuudevs/erp-saq-lab/internal/config"
+	"github.com/zuudevs/erp-saq-lab/internal/domain"
 	"github.com/zuudevs/erp-saq-lab/internal/middleware"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthHandler struct {
-	cfg *config.Config
+	cfg        *config.Config
+	memberRepo domain.MemberRepository
 }
 
-func NewAuthHandler(e *echo.Echo, cfg *config.Config) {
-	handler := &AuthHandler{cfg: cfg}
+func NewAuthHandler(e *echo.Echo, cfg *config.Config, memberRepo domain.MemberRepository) {
+	handler := &AuthHandler{
+		cfg:        cfg,
+		memberRepo: memberRepo,
+	}
 
 	auth := e.Group("/api/v1/auth")
 	auth.POST("/login", handler.Login)
@@ -42,21 +46,26 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		})
 	}
 
-	// TODO: Fetch user from database and verify password
-	// For now, this is a placeholder implementation
-	
-	// Example password verification (implement actual DB lookup)
-	// hashedPassword := "$2a$10$..." // from database
-	// if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(req.Password)); err != nil {
-	// 	return c.JSON(http.StatusUnauthorized, map[string]string{
-	// 		"error": "Invalid credentials",
-	// 	})
-	// }
+	// Find user by NIM
+	member, err := h.memberRepo.FindByNIM(req.NIM)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "Invalid credentials",
+		})
+	}
+
+	// For now, simple password check (TODO: implement proper bcrypt)
+	// In production, use bcrypt.CompareHashAndPassword
+	if member.PasswordHash != req.Password {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "Invalid credentials",
+		})
+	}
 
 	// Generate JWT token
 	claims := &middleware.JWTClaims{
-		UserID: "user-uuid-here", // From database
-		Role:   "ANGGOTA",         // From database
+		UserID: member.ID.String(),
+		Role:   member.CurrentRole,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -95,10 +104,4 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		UserID:       claims.UserID,
 		Role:         claims.Role,
 	})
-}
-
-// HashPassword generates bcrypt hash of password
-func HashPassword(password string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
-	return string(bytes), err
 }
