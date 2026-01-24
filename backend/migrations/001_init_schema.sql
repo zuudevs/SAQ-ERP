@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS member (
     major_code VARCHAR(10) NOT NULL REFERENCES major(code),
     serial_number INT NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'RECRUITMENT',
-    member_role VARCHAR(50) DEFAULT 'ANGGOTA',  -- Changed from current_role
+    member_role VARCHAR(50) DEFAULT 'ANGGOTA',
     password_hash VARCHAR(255) NOT NULL,
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

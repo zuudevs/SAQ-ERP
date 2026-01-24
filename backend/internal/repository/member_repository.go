@@ -10,22 +10,14 @@ type memberRepository struct {
 	db *sqlx.DB
 }
 
-type MemberRepository interface {
-	Create(member *domain.Member) error
-	FindByID(id uuid.UUID) (*domain.Member, error)
-	FindByNIM(nim string) (*domain.Member, error)
-	Update(member *domain.Member) error
-	List(limit, offset int) ([]*domain.Member, error)
-}
-
-func NewMemberRepository(db *sqlx.DB) MemberRepository {
+func NewMemberRepository(db *sqlx.DB) domain.MemberRepository {
 	return &memberRepository{db: db}
 }
 
 func (r *memberRepository) Create(member *domain.Member) error {
 	query := `
 		INSERT INTO member (nim, name, email_uni, generation_year, major_code, 
-			serial_number, status, current_role, password_hash)
+			serial_number, status, member_role, password_hash)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id, joined_at, updated_at
 	`
@@ -39,7 +31,7 @@ func (r *memberRepository) Create(member *domain.Member) error {
 		member.SerialNumber,
 		member.Status,
 		member.MemberRole,
-		"temporary_hash", // TODO: implement password hashing
+		member.PasswordHash,
 	).Scan(&member.ID, &member.JoinedAt, &member.UpdatedAt)
 }
 
@@ -47,7 +39,7 @@ func (r *memberRepository) FindByID(id uuid.UUID) (*domain.Member, error) {
 	var member domain.Member
 	query := `
 		SELECT id, nim, name, email_uni, generation_year, major_code,
-			serial_number, status, current_role, joined_at, updated_at
+			serial_number, status, member_role, password_hash, joined_at, updated_at
 		FROM member
 		WHERE id = $1
 	`
@@ -62,7 +54,7 @@ func (r *memberRepository) FindByNIM(nim string) (*domain.Member, error) {
 	var member domain.Member
 	query := `
 		SELECT id, nim, name, email_uni, generation_year, major_code,
-			serial_number, status, current_role, joined_at, updated_at
+			serial_number, status, member_role, password_hash, joined_at, updated_at
 		FROM member
 		WHERE nim = $1
 	`
@@ -76,7 +68,7 @@ func (r *memberRepository) FindByNIM(nim string) (*domain.Member, error) {
 func (r *memberRepository) Update(member *domain.Member) error {
 	query := `
 		UPDATE member
-		SET name = $1, email_uni = $2, status = $3, current_role = $4,
+		SET name = $1, email_uni = $2, status = $3, member_role = $4,
 			updated_at = CURRENT_TIMESTAMP
 		WHERE id = $5
 	`
@@ -95,7 +87,7 @@ func (r *memberRepository) List(limit, offset int) ([]*domain.Member, error) {
 	var members []*domain.Member
 	query := `
 		SELECT id, nim, name, email_uni, generation_year, major_code,
-			serial_number, status, current_role, joined_at, updated_at
+			serial_number, status, member_role, joined_at, updated_at
 		FROM member
 		ORDER BY joined_at DESC
 		LIMIT $1 OFFSET $2

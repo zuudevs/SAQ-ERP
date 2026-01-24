@@ -81,7 +81,7 @@ func main() {
 	// Health check endpoint
 	e.GET("/health", func(c echo.Context) error {
 		return c.JSON(200, map[string]string{
-			"status": "ok",
+			"status":  "ok",
 			"service": "ERP Lab SAQ",
 		})
 	})
@@ -95,7 +95,7 @@ func main() {
 	log.Printf("🚀 Server starting on port %s", port)
 	log.Printf("📡 API available at http://localhost:%s", port)
 	log.Printf("🏥 Health check at http://localhost:%s/health", port)
-	
+
 	if err := e.Start(":" + port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
